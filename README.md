@@ -1,40 +1,46 @@
-# Spherical mineral segmentation on CT scan images
-In this project, it is desired to analyze the properties of minerals such as sphericity, volume and 2D projection area of each single mineral. After a quick qualitative analysis of the CT scan data, it can be seen that the minerals have mainly spherical shape. In this manner, the data can be segmented by using marker-based watershed segmentation algorithm.
+# Spherical particle segmentation on CT scan images
 
-You can see the input and the output of the project in the folder "data".
+## Introduction
+In this project, I want to analyze the properties of particles (sphericity, volume and 2D projected area) in 3D CT scan data, see Figure below for a slice from the dataset. Here, I will describe the segmentation of the particles in the dataset.
 
-Within the project, I used the image processing software ImageJ, its plugins and MATLAB. 
+![A slice from the dataset](data/slice_0.png)
+
+## Dataset
+You can find an example input and my method's output (50 slices each) in the folder `data`.
+
+## Installation
+Within the project, I used the software ImageJ, its plugins and MATLAB. 
 
 Here is the download link for ImageJ: [Download ImageJ](https://imagej.net/Downloads)
 
-Here is the plugin webpage: [ImageJ 3D segmentation plugin](https://imagejdocu.tudor.lu/plugin/segmentation/3d_spots_segmentation/start#d_segmentation)
+Here is the plugin's webpage: [ImageJ 3D segmentation plugin](https://imagejdocu.tudor.lu/plugin/segmentation/3d_spots_segmentation/start#d_segmentation)
 
+## Problems & Approaches
 
+As I mentioned, I want to segment particles in the dataset. However, I have a problem for the final segmentation: holes in particular particles, see Figure below. These holes give trouble for a full segmentation of particles. So, I have to fill these holes. The idea in my mind is to extract these holes by using their [sphericity factors](https://en.wikipedia.org/wiki/Sphericity). So, first, I separated these holes from the background by using the watershed algorithm. Then, I filtered out all the components which have a lower sphericity factor than a threshold, see Figure below. That simple!
+![CT hole](figures/ct_hole.png)
+![Binary hole](figures/binary_hole.png)
+![Holes watershed transformed](figures/holes_ws_hole.png)
+![Binary filled hole](figures/binary_filled_hole.png)
 
-# Challenges
-1. Holes in the minerals
-One of the problems is the minerals including a hole in their body, i.e. life buoy shaped mineral. It is asked for that these holes should be filled for the analyze, see the figure below. In order to do that, I followed the procedure: I used the sphericity of these holes in the following manner: I applied the watershed segmentation on the background and filtered out the particles having sphericity lower than a threshold.
-![The holes in the image are filled up](data/hole_fill.png)
+After filling these holes, I am ready for the final segmentation. I used the watershed algorithm again but on the particles this time. Here is what I got.
 
+![Binary filled hole](figures/final_segmentation.png)
 
-2. Oversegmentation
-Another encountered common problem during the watershed algorithm is oversegmentation. In order to fix that, the markers of the watershed algorithm should be carefully chosen. I used the plugin's tool Maxima Finder to find the markers. After a few tentative attemps, I set optimal XY radius and threshold.
-
-# Procedure
-I applied two watershed segmentation algorithms consecutively: First, holes in the minerals are filled up by using the sphericity of holes, i.e. hole segmentation, followed by the mineral segmentation. Here is the procedure I followed to segment minerals in the CT scan data:
+## Procedure
+I applied two watershed segmentation algorithms consecutively: First, holes in the particles are filled up by using the sphericity of holes (see the details at **Challenges**), i.e. hole segmentation, followed by the particle segmentation. Here is the procedure I followed to segment particles in the CT scan data:
 
 1. Hole segmentation (*Enhance contrast after the step)
-- Threshold where background larger*
-- Distance transform*
-- Mean filtering*
-- Maxima finder on the filtered image*
-- Watershed (mean filtered + maxima) and binarize
-- Detect and fill the holes, where sphericity > 0.85
+- Inverse image <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_i" title="holes inverse image" />: Binarizing the CT scan image such that the voxel values of background larger*
+- Grayscale image <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_g" title="holes grayscale image" />: Applying distance transform on the inverse image <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_i" title="holes inverse image" />* followed by Mean filtering*
+- Markers <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_m" title="holes marker image" />: Maxima finder on the grayscale image <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_g" title="holes grayscale image" />*
+- Watershed image <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_w" title="holes watershed image" />: Watershed (graycale <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_g" title="holes grayscale image" /> +markers <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_m" title="holes marker image" />) and binarize
+- Holes filled image <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_h" title="holes filled image" />: Detect and fill the holes in the watershed image <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_w" title="holes watershed image" /> by extracting the components of large sphericity factor (<img src="https://latex.codecogs.com/svg.latex?\Large&space;\epsilon > 0.85" title="sphericity threshold" />
 
-2. Mineral Segmentation (*Enhance contrast after the step)
-- Distance transform on the image where minerals are larger*
-- Mean filtering*
-- Maxima finder on the filtered image
-- Watershed (mean filtered + maxima) and binarize
+2. Particle Segmentation (*Enhance contrast after the step)
+- Grayscale image <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_r" title="particles grayscale image" />: Distance transform on the inverse holes filled image <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_h" title="holes filled image" />* + followed by Mean filtering*
+- Markers <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_a" title="particles marker image" />: Maxima finder on the grayscale image <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_r" title="particles grayscale image" />
+- Watershed (graycale <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_r" title="particles grayscale image" /> +markers <img src="https://latex.codecogs.com/svg.latex?\Large&space;I_a" title="particles marker image" />) and binarize
 
-
+## Notes
+A common problem during the watershed algorithm is oversegmentation. In order to avoid that, you should pay attention to how to choose the markers of the watershed algorithm. I used the tool Maxima Finder in the [plugin](https://imagejdocu.tudor.lu/plugin/segmentation/3d_spots_segmentation) for that. After a few tentative attemps, I set optimal kernel radius and threshold.
